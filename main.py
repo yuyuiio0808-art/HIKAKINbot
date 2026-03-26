@@ -1,103 +1,75 @@
+import os
+import discord
+from discord.ext import commands
 
-import {
-  Client,
-  GatewayIntentBits,
-  Events,
-  type Message,
-} from "discord.js";
-import { logger } from "./lib/logger";
+# intents設定（これ超重要）
+intents = discord.Intents.default()
+intents.message_content = True
 
-const ARIGATOU_PATTERNS = [
-  "ありがとう",
-  "ありがとございます",
-  "ありがとうございます",
-  "ありがとね",
-  "ありがとな",
-  "thx",
-  "thanks",
-  "thank you",
-  "サンクス",
-];
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-export function startBot(): void {
-  const token = process.env["DISCORD_TOKEN"];
-  if (!token) {
-    logger.warn("DISCORD_TOKEN is not set. Discord bot will not start.");
-    return;
-  }
+ARIGATOU_PATTERNS = [
+    "ありがとう",
+    "ありがとございます",
+    "ありがとうございます",
+    "ありがとね",
+    "ありがとな",
+    "thx",
+    "thanks",
+    "thank you",
+    "サンクス",
+]
 
-  const client = new Client({
-    intents: [
-      GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildMessages,
-      GatewayIntentBits.MessageContent,
-    ],
-  });
+@bot.event
+async def on_ready():
+    print(f"ログイン成功: {bot.user}")
 
-  client.once(Events.ClientReady, (readyClient) => {
-    logger.info({ tag: readyClient.user.tag }, "Discord bot is ready!");
-  });
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
 
-  client.on(Events.MessageCreate, async (message: Message) => {
-    if (message.author.bot) return;
+    content = message.content.lower()
 
-    const content = message.content.toLowerCase();
+    arigatou_matched = any(p in content for p in ARIGATOU_PATTERNS)
+    niga_matched = "ニガ" in content or "にが" in content
+    game_matched = any(x in content for x in [
+        "ゲームしよう", "げーむしよう", "ゲームしましょう", "ゲームしない"
+    ])
+    hikakin_matched = "hikakin" in content or "ひかきん" in content
+    mejicon_matched = "メジコン" in content or "めじこん" in content
+    resta_min_matched = "レスタミン" in content or "れすたみん" in content
+    lettuce_matched = "レタス" in content or "れたす" in content
+    seafood_matched = "魚介" in content or "ぎょかい" in content
+    seikin_matched = "seikin" in content or "せいきん" in content
 
-    const arigatouMatched = ARIGATOU_PATTERNS.some((pattern) =>
-      content.includes(pattern.toLowerCase()),
-    );
+    if arigatou_matched:
+        await message.reply("ブンブン！当たり前のことをしただけですよ〜 😊")
+    elif niga_matched:
+        await message.reply("ニガ？僕は普通の肌の色しか知りません")
+    elif game_matched:
+        await message.reply("クカッ！HIKAKINゲームズで動画をとりませんか？")
+    elif seikin_matched:
+        await message.reply("長らく会ってないですね")
+    elif hikakin_matched:
+        await message.reply("どうも！HIKAKINです！")
+    elif mejicon_matched:
+        await message.reply("次の企画はそれにしよう！")
+    elif resta_min_matched:
+        await message.reply("SEIKINが好きです！")
+    elif lettuce_matched:
+        await message.reply("いきなり野菜の話ですか？")
+    elif seafood_matched:
+        await message.reply(
+            "マスクで汚染花粉からの被害を回避できます。また、魚介類は産地がわからないものは食べません。日本産の魚介類は終わってます。特に大型魚類と貝類は放射性物質が濃縮されますんでお気をつけて。"
+        )
 
-    const nigaMatched =
-      content.includes("ニガ") || content.includes("にが");
+    await bot.process_commands(message)
 
-    const gameMatched =
-      content.includes("ゲームしよう") ||
-      content.includes("げーむしよう") ||
-      content.includes("ゲームしましょう") ||
-      content.includes("ゲームしない");
+# トークン取得
+token = os.getenv("DISCORD_TOKEN")
 
-    const hikakinMatched =
-      content.includes("hikakin") || content.includes("ひかきん");
-
-    const mejiconMatched =
-      content.includes("メジコン") || content.includes("めじこん");
-
-    const restaMinMatched =
-      content.includes("レスタミン") || content.includes("れすたみん");
-
-    const lettuceMatched =
-      content.includes("レタス") || content.includes("れたす");
-
-    const seafoodMatched =
-      content.includes("魚介") || content.includes("ぎょかい");
-
-    const seikinMatched =
-      content.includes("seikIn") || content.includes("せいきん");
-
-    if (arigatouMatched) {
-      await message.reply("ブンブン！当たり前のことをしただけですよ〜 😊");
-    } else if (nigaMatched) {
-      await message.reply("ニガ？僕は普通の肌の色しか知りません");
-    } else if (gameMatched) {
-      await message.reply("クカッ！HIKAKINゲームズで動画をとりませんか？");
-    } else if (seikinMatched) {
-      await message.reply("長らく会ってないですね");
-    } else if (hikakinMatched) {
-      await message.reply("どうも！HIKAKINです！");
-    } else if (mejiconMatched) {
-      await message.reply("次の企画はそれにしよう！");
-    } else if (restaMinMatched) {
-      await message.reply("SEIKINが好きです！");
-    } else if (lettuceMatched) {
-      await message.reply("いきなり野菜の話ですか？");
-    } else if (seafoodMatched) {
-      await message.reply(
-        "マスクで汚染花粉からの被害を回避できます。また、魚介類は産地がわからないものは食べません。日本産の魚介類は終わってます。特に大型魚類と貝類は放射性物質が濃縮されますんでお気をつけて。",
-      );
-    }
-  });
-
-  client.login(token).catch((err) => {
-    logger.error({ err }, "Failed to login to Discord");
-  });
-}
+if not token:
+    print("DISCORD_TOKENが設定されてねぇぞ！")
+else:
+    bot.run(token)
