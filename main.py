@@ -1,23 +1,39 @@
 import os
 import discord
 from discord.ext import commands
+from flask import Flask
+from threading import Thread
 
-# intents設定（これ超重要）
+# ==========================================
+# 1. Render用：Flaskでダミーサーバーを立てる
+# ==========================================
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run():
+    # Renderが指定するポート番号を取得（デフォルトは8080）
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    """Flaskを別スレッドで実行してBotと並行動作させる"""
+    t = Thread(target=run)
+    t.start()
+
+# ==========================================
+# 2. Discord Botの設定
+# ==========================================
 intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 ARIGATOU_PATTERNS = [
-    "ありがとう",
-    "ありがとございます",
-    "ありがとうございます",
-    "ありがとね",
-    "ありがとな",
-    "thx",
-    "thanks",
-    "thank you",
-    "サンクス",
+    "ありがとう", "ありがとございます", "ありがとうございます",
+    "ありがとね", "ありがとな", "thx", "thanks", "thank you", "サンクス",
 ]
 
 @bot.event
@@ -31,6 +47,7 @@ async def on_message(message):
 
     content = message.content.lower()
 
+    # 各種マッチング処理
     arigatou_matched = any(p in content for p in ARIGATOU_PATTERNS)
     niga_matched = "ニガ" in content or "にが" in content
     game_matched = any(x in content for x in [
@@ -43,6 +60,7 @@ async def on_message(message):
     seafood_matched = "魚介" in content or "ぎょかい" in content
     seikin_matched = "seikin" in content or "せいきん" in content
 
+    # 応答ロジック
     if arigatou_matched:
         await message.reply("ブンブン！当たり前のことをしただけですよ〜 😊")
     elif niga_matched:
@@ -66,10 +84,19 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# トークン取得
+# ==========================================
+# 3. 実行
+# ==========================================
 token = os.getenv("DISCORD_TOKEN")
 
 if not token:
-    print("DISCORD_TOKENが設定されてねぇぞ！")
+    print("エラー: DISCORD_TOKENが設定されていません。")
 else:
-    bot.run(token)
+    # 1. まずFlaskサーバーをバックグラウンドで起動
+    keep_alive()
+    # 2. 次にDiscord Botを起動
+    try:
+    
+        bot.run(token)
+    except Exception as e:
+        print(f"起動エラーが発生しました: {e}")
